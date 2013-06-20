@@ -1,0 +1,13 @@
+libcryptobox
+
+CryptoBox is a project underway to develop a package that provides core
+functions for safely employing cryptography, while using FIPS ciphers as
+the underlying cryptographic primitives. It is heavily inspired by NaCL
+The aim is provide developers with a well-documented, properly-written,
+FIPS-compliant set of tools for proper encryption. Most developers will
+want to use NaCL, but this is provided for scenarios in which the use
+of Suite B ciphers might be required.
+
+
+License:
+libcryptobox is released under the ISC license.
