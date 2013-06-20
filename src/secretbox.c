@@ -30,8 +30,8 @@ static int       secretbox_decrypt(unsigned char *, unsigned char *,
 static int       secretbox_encrypt(unsigned char *, unsigned char *,
                                    unsigned char *, int);
 static int       secretbox_generate_nonce(unsigned char *);
-static int       secretbox_tag(unsigned char *, unsigned char *, int,
-                               unsigned char *);
+//static int       secretbox_tag(unsigned char *, unsigned char *, int,
+//                               unsigned char *);
 static int       secretbox_check_tag(unsigned char *, unsigned char *, int);
 
 
@@ -98,7 +98,7 @@ secretbox_encrypt(unsigned char *key, unsigned char *in, unsigned char *out,
         if (!secretbox_generate_nonce(nonce)) {
                 return -1;
         }
-	memcpy(out, nonce, SECRETBOX_TAG_SIZE);
+	memcpy(out, nonce, SECRETBOX_IV_SIZE);
         memcpy(cryptkey, key, SECRETBOX_CRYPT_SIZE);
 	printf("nonce: ");
 	dump(nonce, SECRETBOX_IV_SIZE);
@@ -152,6 +152,7 @@ secretbox_seal(unsigned char *key, unsigned char *m, int mlen)
         unsigned char           *c;
 	int			 ctlen;
 
+        printf("mlen: %d\n", mlen);
 	ctlen = mlen+SECRETBOX_IV_SIZE;
         if (NULL == (c = malloc(mlen + OVERHEAD + 1)))
                 return NULL;
@@ -256,10 +257,14 @@ secretbox_open(unsigned char *key, struct secretbox_box *box)
 
 	if (box == NULL)
 		return NULL;
+        printf("box len: %d\n", box->len);
 	decryptlen = (box->len) - OVERHEAD;
+        printf("decrypt len: %d\n", decryptlen);
         if (NULL != (message = malloc(decryptlen + 1))) {
 		if (secretbox_decrypt(key, box->contents, message, decryptlen)) {
 			if (secretbox_check_tag(key, box->contents, box->len)) {
+                                printf("decrypt: ");
+                                dump(message, decryptlen);
 				return message;
 			} else {
 				printf("tag check fails\n");

@@ -33,5 +33,7 @@ int                      secretbox_generate_key(unsigned char *);
 struct secretbox_box    *secretbox_seal(unsigned char *, unsigned char *, int);
 unsigned char           *secretbox_open(unsigned char *,
                                         struct secretbox_box *);
+int       secretbox_tag(unsigned char *, unsigned char *, int,
+                               unsigned char *);
 
 #endif
