@@ -8,6 +8,6 @@ AM_CFLAGS  = -Werror -Wall -std=c99
 AM_CFLAGS += -g -O0
 
 lib_LTLIBRARIES = libcryptobox.la
-libcryptobox_la_SOURCES = secretbox.c strongbox.c
 nobase_include_HEADERS = cryptobox/secretbox.h cryptobox/strongbox.h
+libcryptobox_la_SOURCES = secretbox.c strongbox.c
 libcryptobox_la_LIBADD = -lcrypto

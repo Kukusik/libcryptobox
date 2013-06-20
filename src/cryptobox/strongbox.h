@@ -29,9 +29,9 @@ struct strongbox_box {
 const size_t    STRONGBOX_KEY_SIZE = 64;
 const size_t    STRONGBOX_OVERHEAD = 48;
 
-int                      strongbox_generate_key(unsigned char *);
-struct strongbox_box    *strongbox_seal(unsigned char *, int, unsigned char *);
-unsigned char           *strongbox_open(struct strongbox_box *, unsigned char *);
-void                     strongbox_close(struct strongbox_box *);
+int              strongbox_generate_key(unsigned char *);
+unsigned char   *strongbox_seal(unsigned char *, int, int *, unsigned char *);
+unsigned char   *strongbox_open(unsigned char *, int, unsigned char *);
+
 
 #endif

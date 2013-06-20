@@ -120,30 +120,28 @@ secretbox_tag(unsigned char *key, unsigned char *in, int inlen,
 /*
  * Seal a message into a box.
  */
-struct secretbox_box *
-secretbox_seal(unsigned char *m, int mlen, unsigned char *key)
+unsigned char *
+secretbox_seal(unsigned char *m, int mlen, int *box_len, unsigned char *key)
 {
-        struct secretbox_box    *box = NULL;
-        unsigned char           *c;
+        unsigned char           *box;
 	int			 ctlen;
 
 	ctlen = mlen+SECRETBOX_IV_SIZE;
-        if (NULL == (c = malloc(mlen + SECRETBOX_OVERHEAD + 1)))
+        if (NULL == (box = malloc(mlen+SECRETBOX_OVERHEAD)))
                 return NULL;
 
-        if (secretbox_encrypt(key, m, c, mlen))
-        if (secretbox_tag(key, c, ctlen, c+ctlen)) {
-                if (NULL != (box = malloc(sizeof(struct secretbox_box)))) {
-                        box->contents = c;
-                        box->len = mlen+SECRETBOX_OVERHEAD;
-                }
+        if (secretbox_encrypt(key, m, box, mlen))
+        if (secretbox_tag(key, box, ctlen, box+ctlen)) {
+		*box_len = mlen+SECRETBOX_OVERHEAD;
+		return box;
         }
 
-        if (NULL == box) {
-                memset(c, 0, mlen+SECRETBOX_OVERHEAD);
-                free(c);
+        if (NULL != box) {
+                memset(box, 0, mlen+SECRETBOX_OVERHEAD);
+                free(box);
 	}
-        return box;
+	*box_len = 0;
+        return NULL;
 }
 
 
@@ -155,18 +153,14 @@ secretbox_decrypt(unsigned char *key, unsigned char *in, unsigned char *out,
                   int data_len)
 {
         EVP_CIPHER_CTX   crypt;
-        unsigned char    nonce[SECRETBOX_IV_SIZE+1];
-        unsigned char    cryptkey[SECRETBOX_CRYPT_SIZE+1];
+        unsigned char    nonce[SECRETBOX_IV_SIZE];
+        unsigned char    cryptkey[SECRETBOX_CRYPT_SIZE];
         int              ptlen = 0;
         int              res = 0;
 	int		 finale = 0;
 
         memcpy(nonce, in, SECRETBOX_IV_SIZE);
-	if (0 != memcmp(nonce, in, SECRETBOX_CRYPT_SIZE))
-		abort();
         memcpy(cryptkey, key, SECRETBOX_CRYPT_SIZE);
-	if (0 != memcmp(cryptkey, key, SECRETBOX_CRYPT_SIZE))
-		abort();
 
         EVP_CIPHER_CTX_init(&crypt);
         if (EVP_DecryptInit_ex(&crypt, EVP_aes_128_ctr(), NULL, cryptkey, nonce))
@@ -209,32 +203,20 @@ secretbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
  * Recover the message from a box.
  */
 unsigned char *
-secretbox_open(struct secretbox_box *box, unsigned char *key)
+secretbox_open(unsigned char *box, int box_len, unsigned char *key)
 {
         unsigned char   *message = NULL;
 	int		 decryptlen = 0;
 
 	if (box == NULL)
 		return NULL;
-	decryptlen = (box->len) - SECRETBOX_OVERHEAD;
-        if (NULL != (message = malloc(decryptlen + 1)))
-        if (secretbox_decrypt(key, box->contents, message, decryptlen))
-	if (secretbox_check_tag(key, box->contents, box->len))
+	decryptlen = box_len - SECRETBOX_OVERHEAD;
+        if (NULL != (message = malloc(decryptlen)))
+        if (secretbox_decrypt(key, box, message, decryptlen))
+	if (secretbox_check_tag(key, box, box_len))
 		return message;
         if (NULL != message)
                 memset(message, 0, decryptlen+1);
         free(message);
         return NULL;
-}
-
-
-/*
- * Reclaim the memory used by a box.
- */
-void
-secretbox_close(struct secretbox_box *box)
-{
-        if (NULL != box)
-                free(box->contents);
-        free(box);
 }
