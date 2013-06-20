@@ -132,7 +132,8 @@ secretbox_seal(unsigned char *m, int mlen, int *box_len, unsigned char *key)
 
         if (secretbox_encrypt(key, m, box, mlen))
         if (secretbox_tag(key, box, ctlen, box+ctlen)) {
-		*box_len = mlen+SECRETBOX_OVERHEAD;
+		if (NULL != box_len)
+			*box_len = mlen+SECRETBOX_OVERHEAD;
 		return box;
         }
 

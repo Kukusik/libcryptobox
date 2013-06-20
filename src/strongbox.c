@@ -132,7 +132,8 @@ strongbox_seal(unsigned char *m, int mlen, int *box_len, unsigned char *key)
 
         if (strongbox_encrypt(key, m, box, mlen))
         if (strongbox_tag(key, box, ctlen, box+ctlen)) {
-		*box_len = mlen+STRONGBOX_OVERHEAD;
+		if (NULL != box_len)
+			*box_len = mlen+STRONGBOX_OVERHEAD;
 		return box;
         }
 
@@ -220,16 +221,3 @@ strongbox_open(unsigned char *box, int box_len, unsigned char *key)
         free(message);
         return NULL;
 }
-
-
-/*
- * Reclaim the memory used by a box.
- */
-void
-strongbox_close(struct strongbox_box *box)
-{
-        if (NULL != box)
-                free(box->contents);
-        free(box);
-}
-
