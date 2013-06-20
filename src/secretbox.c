@@ -20,6 +20,7 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <stdio.h>
 
 #include <cryptobox/secretbox.h>
 
@@ -35,9 +36,26 @@ static int       secretbox_check_tag(unsigned char *, unsigned char *, int);
 
 
 
+#define SECRETBOX_IV_SIZE	16
+#define SECRETBOX_CRYPT_SIZE	16
+#define SECRETBOX_TAG_SIZE	32
+/*
 const size_t SECRETBOX_IV_SIZE  = 16;
 const size_t SECRETBOX_CRYPT_SIZE = 16;
 const size_t SECRETBOX_TAG_SIZE = 32;
+ */
+
+
+static void
+dump(unsigned char *in, int inlen)
+{
+	int i = 0;
+
+	for (i = 0; i < inlen; i++) {
+		printf("%02hx ", in[i]);
+	}
+	printf("\n");
+}
 
 
 /*
@@ -74,19 +92,22 @@ secretbox_encrypt(unsigned char *key, unsigned char *in, unsigned char *out,
         unsigned char    nonce[SECRETBOX_IV_SIZE];
         unsigned char    cryptkey[SECRETBOX_CRYPT_SIZE];
         int              ctlen = 0;
+	int		 finale = 0;
         int              res = 0;
 
         if (!secretbox_generate_nonce(nonce)) {
                 return -1;
         }
-
+	memcpy(out, nonce, SECRETBOX_TAG_SIZE);
         memcpy(cryptkey, key, SECRETBOX_CRYPT_SIZE);
+	printf("nonce: ");
+	dump(nonce, SECRETBOX_IV_SIZE);
 
         EVP_CIPHER_CTX_init(&crypt);
         if (EVP_EncryptInit_ex(&crypt, EVP_aes_128_ctr(), NULL, cryptkey, nonce))
-        if (EVP_EncryptUpdate(&crypt, out, &ctlen, in, data_len))
-        if (EVP_EncryptFinal_ex(&crypt, out, &ctlen))
-        if (ctlen == data_len)
+        if (EVP_EncryptUpdate(&crypt, out+SECRETBOX_IV_SIZE, &ctlen, in, data_len))
+        if (EVP_EncryptFinal_ex(&crypt, out+SECRETBOX_IV_SIZE+ctlen, &finale))
+        if (ctlen+finale == data_len)
                 res = 1;
         EVP_CIPHER_CTX_cleanup(&crypt);
         memset(cryptkey, 0x0, SECRETBOX_CRYPT_SIZE);
@@ -103,14 +124,20 @@ secretbox_tag(unsigned char *key, unsigned char *in, int inlen,
 {
         unsigned char   tagkey[SECRETBOX_TAG_SIZE];
         unsigned int    md_len;
-        int             res = -1;
+        int             res = 0;
 
         memcpy(tagkey, key+SECRETBOX_CRYPT_SIZE, SECRETBOX_TAG_SIZE);
+	printf("tagkey: ");
+	dump(tagkey, SECRETBOX_TAG_SIZE);
+	printf("target: ");
+	dump(in, inlen);
         tag = HMAC(EVP_sha256(), tag, SECRETBOX_TAG_SIZE, in, inlen,
                    tag, &md_len);
         memset(tagkey, 0x0, SECRETBOX_TAG_SIZE);
         if (NULL != tag)
-                res = 0;
+                res = 1;
+	printf("message tag: ");
+	dump(tag, SECRETBOX_TAG_SIZE);
         return res;
 }
 
@@ -121,14 +148,16 @@ secretbox_tag(unsigned char *key, unsigned char *in, int inlen,
 struct secretbox_box *
 secretbox_seal(unsigned char *key, unsigned char *m, int mlen)
 {
-        struct secretbox_box    *box;
+        struct secretbox_box    *box = NULL;
         unsigned char           *c;
+	int			 ctlen;
 
+	ctlen = mlen+SECRETBOX_IV_SIZE;
         if (NULL == (c = malloc(mlen + OVERHEAD + 1)))
                 return NULL;
 
         if (secretbox_encrypt(key, m, c, mlen))
-        if (secretbox_tag(key, c, mlen, c+mlen)) {
+        if (secretbox_tag(key, c, ctlen, c+ctlen)) {
                 if (NULL != (box = malloc(sizeof(struct secretbox_box)))) {
                         box->contents = c;
                         box->len = mlen+OVERHEAD;
@@ -138,7 +167,10 @@ secretbox_seal(unsigned char *key, unsigned char *m, int mlen)
         if (NULL == box) {
                 memset(c, 0, mlen+OVERHEAD);
                 free(c);
-        }
+        } else {
+		printf("box: ");
+		dump(box->contents, box->len);
+	}
         return box;
 }
 
@@ -151,20 +183,25 @@ secretbox_decrypt(unsigned char *key, unsigned char *in, unsigned char *out,
                   int data_len)
 {
         EVP_CIPHER_CTX   crypt;
-        unsigned char    nonce[SECRETBOX_IV_SIZE];
-        unsigned char    cryptkey[SECRETBOX_CRYPT_SIZE];
+        unsigned char    nonce[SECRETBOX_IV_SIZE+1];
+        unsigned char    cryptkey[SECRETBOX_CRYPT_SIZE+1];
         int              ptlen = 0;
         int              res = 0;
+	int		 finale = 0;
 
         memcpy(nonce, in, SECRETBOX_IV_SIZE);
+	if (0 != memcmp(nonce, in, SECRETBOX_CRYPT_SIZE))
+		abort();
         memcpy(cryptkey, key, SECRETBOX_CRYPT_SIZE);
+	if (0 != memcmp(cryptkey, key, SECRETBOX_CRYPT_SIZE))
+		abort();
 
         EVP_CIPHER_CTX_init(&crypt);
-        if (EVP_DecryptInit_ex(&crypt, EVP_aes_128_ctr(), NULL, key, nonce))
+        if (EVP_DecryptInit_ex(&crypt, EVP_aes_128_ctr(), NULL, cryptkey, nonce))
         if (EVP_DecryptUpdate(&crypt, out, &ptlen, in+SECRETBOX_IV_SIZE,
                               data_len))
-        if (EVP_DecryptFinal_ex(&crypt, out, &ptlen))
-        if (ptlen == data_len)
+        if (EVP_DecryptFinal_ex(&crypt, out, &finale))
+        if (ptlen+finale == data_len)
                 res = 1;
         EVP_CIPHER_CTX_cleanup(&crypt);
         memset(cryptkey, 0x0, SECRETBOX_CRYPT_SIZE);
@@ -186,11 +223,23 @@ secretbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
         int              match = 0;
 
         msglen = inlen - SECRETBOX_TAG_SIZE;
+	printf("message length: %d\n", msglen);
+	printf("%d = %d - %d\n", msglen, inlen, SECRETBOX_TAG_SIZE);
         memcpy(tagkey, key+SECRETBOX_CRYPT_SIZE, SECRETBOX_TAG_SIZE);
         memcpy(tag, in+msglen, SECRETBOX_TAG_SIZE);
-        if (secretbox_tag(key, in, msglen, atag))
-        if (memcmp(atag, tag, SECRETBOX_TAG_SIZE) == 1)
-                match = 1;
+        if (secretbox_tag(key, in, msglen, atag)) {
+		if (memcmp(atag, tag, SECRETBOX_TAG_SIZE) == 0) {
+			match = 1;
+		} else {
+			printf("memcmp fails\n");
+			printf("atag: ");
+			dump(atag, SECRETBOX_TAG_SIZE);
+			printf("tag: ");
+			dump(tag, SECRETBOX_TAG_SIZE);
+		}
+	} else {
+		printf("failed to compute tag\n");
+	}
         memset(tagkey, 0, SECRETBOX_TAG_SIZE);
         return match;
 }
@@ -202,14 +251,27 @@ secretbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
 unsigned char *
 secretbox_open(unsigned char *key, struct secretbox_box *box)
 {
-        unsigned char   *message;
+        unsigned char   *message = NULL;
+	int		 decryptlen = 0;
 
-        if (NULL != (message = malloc(box->len-OVERHEAD+1)))
-        if (secretbox_decrypt(key, box->contents, message, box->len-OVERHEAD))
-        if (secretbox_check_tag(key, box->contents, box->len))
-                return message;
+	if (box == NULL)
+		return NULL;
+	decryptlen = (box->len) - OVERHEAD;
+        if (NULL != (message = malloc(decryptlen + 1))) {
+		if (secretbox_decrypt(key, box->contents, message, decryptlen)) {
+			if (secretbox_check_tag(key, box->contents, box->len)) {
+				return message;
+			} else {
+				printf("tag check fails\n");
+			}
+		} else {
+			printf("decrypt fails\n");
+		}
+	} else {
+		printf("malloc fails\n");
+	}
         if (NULL != message)
-                memset(message, 0, box->len-OVERHEAD+1);
+                memset(message, 0, decryptlen+1);
         free(message);
         return NULL;
 }

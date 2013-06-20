@@ -1,4 +1,4 @@
-AC_PREREQ([2.60])
+AC_PREREQ([2.69])
 AC_INIT([libcryptobox],
          [0.0.1],
          [kyle@tyrfingr.is],
@@ -9,7 +9,7 @@ LT_PREREQ([2.4.2])
 LT_INIT
 
 AC_CONFIG_SRCDIR([src/cryptobox/secretbox.h])
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
 AC_CHECK_HEADERS
 
 AC_PROG_CC

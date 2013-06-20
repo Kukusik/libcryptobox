@@ -5,8 +5,9 @@
 #AM_CFLAGS += -D_BSD_SOURCE -D_XOPEN_SOURCE=700
 
 AM_CFLAGS  = -Werror -Wall -std=c99
-AM_CFLAGS += -g
+AM_CFLAGS += -g -O0
 
 lib_LTLIBRARIES = libcryptobox.la
 libcryptobox_la_SOURCES = secretbox.c
 libcryptobox_la_INCLUDES = cryptobox/secretbox.h
+libcryptobox_la_LIBADD = -lcrypto

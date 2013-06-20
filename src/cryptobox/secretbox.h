@@ -27,7 +27,7 @@ struct secretbox_box {
 };
 
 const size_t    SECRETBOX_KEY_SIZE = 48;
-const size_t    OVERHEAD = 64;
+const size_t    OVERHEAD = 48;
 
 int                      secretbox_generate_key(unsigned char *);
 struct secretbox_box    *secretbox_seal(unsigned char *, unsigned char *, int);
