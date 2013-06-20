@@ -52,24 +52,11 @@ static unsigned char global_bad_key[] = {
         0x8e, 0xe1, 0xc8, 0x65, 0x0a, 0x1c, 0x14, 0x1b,
 };
 
-static void
-print_buf(unsigned char *buf, size_t len)
-{
-	int		 i;
-
-	for (i = 0; i  < len; i++) {
-		if (i % 8 == 0)
-			printf("\n\t");
-		printf("%02hx ", buf[i]);
-	}
-	printf("\n");
-}
-
 
 static void
 test_identity(void)
 {
-	unsigned char test_key[] = {
+	unsigned char	 test_key[] = {
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -79,18 +66,18 @@ test_identity(void)
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
 	};
-	unsigned char test_msg[] = {0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x0};
+	unsigned char	 test_msg[] = {0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x0};
+	unsigned char	*box = NULL;
+	unsigned char	*test_decrypted;
+	int		 box_len;
 
-	struct strongbox_box	*box = NULL;
-	unsigned char		*test_decrypted;
-
-	box = strongbox_seal(test_msg, sizeof(test_msg), test_key);
+	box = strongbox_seal(test_msg, sizeof(test_msg), &box_len, test_key);
 	CU_ASSERT(box != NULL);
-	test_decrypted = strongbox_open(box, test_key);
+	test_decrypted = strongbox_open(box, box_len, test_key);
 	CU_ASSERT(NULL != test_decrypted && 0 == memcmp(test_decrypted,
 		  test_msg, strlen(test_msg)));
 	free(test_decrypted);
-        strongbox_close(box);
+	free(box);
 }
 
 
@@ -120,81 +107,65 @@ test_decrypt(void)
 	};
         unsigned char expected[] = {0x01, 0x02, 0x03, 0x04};
         unsigned char           *msg = NULL;
-        struct strongbox_box    *box = NULL;
 
-        box = malloc(sizeof(struct strongbox_box));
-        CU_ASSERT(NULL != box);
-
-        box->contents = malloc(test_box_len+1);
-        box->len = test_box_len;
-        memcpy(box->contents, test_box, box->len);
-
-        msg = strongbox_open(box, test_key);
+        msg = strongbox_open(test_box, test_box_len, test_key);
         CU_ASSERT(msg != NULL);
         if (NULL != msg) {
                 CU_ASSERT(0 == memcmp(expected, msg, 4));
-                print_buf(msg, 5);
-                free(msg);
         }
-        strongbox_close(box);
 }
 
 
 static void
-test_unbox_vector(const unsigned char *box_contents, int box_len,
-                  const unsigned char *expected, int expected_len)
+test_unbox_vector(unsigned char *box_contents, int box_len,
+                  unsigned char *expected, int expected_len)
 {
-        struct strongbox_box    *box = NULL;
-        unsigned char           *message = NULL;
+        unsigned char	*message = NULL;
 
-        box = malloc(sizeof(struct strongbox_box));
-        CU_ASSERT(NULL != box);
-        box->contents = malloc(box_len);
-        box->len = box_len;
-        memcpy(box->contents, box_contents, box->len);
-
-        message = strongbox_open(box, global_test_key);
+        message = strongbox_open(box_contents, box_len, global_test_key);
         CU_ASSERT(NULL != message);
-        if (NULL != message)
-                CU_ASSERT(0 == memcmp(message, expected, expected_len));
-        strongbox_close(box);
-        free(message);
+	if (NULL != message) {
+		CU_ASSERT(0 == memcmp(message, expected, expected_len));
+		free(message);
+	}
 }
 
 
 static void
 test_box_cycle(unsigned char *message, int message_len)
 {
-        struct strongbox_box    *box = NULL;
+	unsigned char		*box = NULL;
         unsigned char           *msg = NULL;
+	int			 box_len = 0;
 
-        box = strongbox_seal(message, message_len, global_test_key);
+        box = strongbox_seal(message, message_len, &box_len, global_test_key);
         CU_ASSERT(NULL != box);
         if (NULL != box) {
-                msg = strongbox_open(box, global_test_key);
+                msg = strongbox_open(box, box_len, global_test_key);
                 CU_ASSERT(NULL != msg);
                 if (NULL != msg)
                         CU_ASSERT(0 == memcmp(msg, message, message_len));
                 free(msg);
         }
-        strongbox_close(box);
+	free(box);
 }
 
 
 static void
 test_box_bad_cycle(unsigned char *message, int message_len)
 {
-        struct strongbox_box    *box = NULL;
-        unsigned char           *msg = NULL;
+        unsigned char	*box = NULL;
+        unsigned char	*msg = NULL;
+	int		 box_len = 0;
 
-        box = strongbox_seal(message, message_len, global_test_key);
+        box = strongbox_seal(message, message_len, &box_len, global_test_key);
         CU_ASSERT(NULL != box);
         if (NULL != box) {
-                msg = strongbox_open(box, global_bad_key);
+                msg = strongbox_open(box, box_len, global_bad_key);
                 CU_ASSERT(NULL == msg);
                 free(msg);
         }
-        strongbox_close(box);
+	free(box);
 }
 
 

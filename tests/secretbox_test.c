@@ -48,19 +48,6 @@ static unsigned char global_bad_key[] = {
         0x60, 0xf2, 0x26, 0x80, 0xfa, 0xb2, 0x30, 0xf8
 };
 
-static void
-print_buf(unsigned char *buf, size_t len)
-{
-	int		 i;
-
-	for (i = 0; i  < len; i++) {
-		if (i % 8 == 0)
-			printf("\n\t");
-		printf("%02hx ", buf[i]);
-	}
-	printf("\n");
-}
-
 
 static void
 test_identity(void)
@@ -75,16 +62,18 @@ test_identity(void)
 	};
 	unsigned char test_msg[] = {0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x0};
 
-	struct secretbox_box	*box = NULL;
-	unsigned char		*test_decrypted;
+	unsigned char	*box = NULL;
+	unsigned char	*test_decrypted;
+	int		 box_len = 0;
 
-	box = secretbox_seal(test_msg, sizeof(test_msg), test_key);
+	box = secretbox_seal(test_msg, sizeof(test_msg), &box_len, test_key);
 	CU_ASSERT(box != NULL);
-	test_decrypted = secretbox_open(box, test_key);
+	box_len = sizeof(test_msg) + SECRETBOX_OVERHEAD;
+	test_decrypted = secretbox_open(box, box_len, test_key);
 	CU_ASSERT(NULL != test_decrypted && 0 == memcmp(test_decrypted,
-		  test_msg, strlen(test_msg)));
+		  test_msg, sizeof test_msg));
 	free(test_decrypted);
-        secretbox_close(box);
+	free(box);
 }
 
 
@@ -112,87 +101,74 @@ test_decrypt(void)
 	};
         unsigned char expected[] = {0x01, 0x02, 0x03, 0x04};
 
-        unsigned char           *msg = NULL;
-        struct secretbox_box    *box = NULL;
+        unsigned char	*msg = NULL;
 
-        box = malloc(sizeof(struct secretbox_box));
-        CU_ASSERT(NULL != box);
-
-        box->contents = malloc(test_box_len+1);
-        box->len = test_box_len;
-        memcpy(box->contents, test_box, box->len);
-
-        msg = secretbox_open(box, test_key);
+        msg = secretbox_open(test_box, test_box_len, test_key);
         CU_ASSERT(msg != NULL);
         if (NULL != msg) {
                 CU_ASSERT(0 == memcmp(expected, msg, 4));
                 free(msg);
         }
-        secretbox_close(box);
 }
 
 
 static void
-test_unbox_vector(const unsigned char *box_contents, int box_len,
-                  const unsigned char *expected, int expected_len)
+test_unbox_vector(unsigned char *box, int box_len, unsigned char *expected,
+		  int expected_len)
 {
-        struct secretbox_box    *box = NULL;
-        unsigned char           *message = NULL;
+        unsigned char	*message = NULL;
 
-        box = malloc(sizeof(struct secretbox_box));
-        CU_ASSERT(NULL != box);
-        box->contents = malloc(box_len);
-        box->len = box_len;
-        memcpy(box->contents, box_contents, box->len);
-
-        message = secretbox_open(box, global_test_key);
+        message = secretbox_open(box, box_len, global_test_key);
         CU_ASSERT(NULL != message);
-        CU_ASSERT(0 == memcmp(message, expected, expected_len));
-        secretbox_close(box);
-        free(message);
+	if (NULL != message) {
+		CU_ASSERT(0 == memcmp(message, expected, expected_len));
+		free(message);
+	}
 }
 
 
 static void
 test_box_cycle(unsigned char *message, int message_len)
 {
-        struct secretbox_box    *box = NULL;
+	unsigned char		*box = NULL;
         unsigned char           *msg = NULL;
+	int			 box_len = 0;
 
-        box = secretbox_seal(message, message_len, global_test_key);
+        box = secretbox_seal(message, message_len, &box_len, global_test_key);
         CU_ASSERT(NULL != box);
         if (NULL != box) {
-                msg = secretbox_open(box, global_test_key);
+                msg = secretbox_open(box, box_len, global_test_key);
                 CU_ASSERT(NULL != msg);
                 if (NULL != msg)
                         CU_ASSERT(0 == memcmp(msg, message, message_len));
                 free(msg);
         }
-        secretbox_close(box);
+	free(box);
 }
 
 
 static void
 test_box_bad_cycle(unsigned char *message, int message_len)
 {
-        struct secretbox_box    *box = NULL;
-        unsigned char           *msg = NULL;
+        unsigned char	*box = NULL;
+        unsigned char	*msg = NULL;
+	int		 box_len = 0;
 
-        box = secretbox_seal(message, message_len, global_test_key);
+        box = secretbox_seal(message, message_len, &box_len, global_test_key);
         CU_ASSERT(NULL != box);
         if (NULL != box) {
-                msg = secretbox_open(box, global_bad_key);
+                msg = secretbox_open(box, box_len, global_bad_key);
                 CU_ASSERT(NULL == msg);
                 free(msg);
         }
-        secretbox_close(box);
+	free(box);
 }
 
 
 static void
 test_vector1(void)
 {
-        unsigned char expected[] = "Hello, world.";
+        char expected[] = "Hello, world.";
         unsigned char box_contents[] = {
                 0x78, 0x12, 0x75, 0xce, 0x25, 0x47, 0x81, 0x5b,
                 0x67, 0x33, 0x14, 0x1c, 0xea, 0xe5, 0x0e, 0x33,
@@ -203,12 +179,12 @@ test_vector1(void)
                 0x5b, 0xd1, 0x33, 0x25, 0x14, 0xfe, 0x59, 0x07,
                 0x5d, 0x9d, 0x99, 0x77, 0x5d,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
-        test_unbox_vector(box_contents, box_len, expected, expected_len);
-        test_box_cycle(expected, expected_len);
-        test_box_bad_cycle(expected, expected_len);
+        test_unbox_vector(box_contents, box_len, (unsigned char *)expected, expected_len);
+        test_box_cycle((unsigned char *)expected, expected_len);
+        test_box_bad_cycle((unsigned char *)expected, expected_len);
 }
 
 static void
@@ -241,7 +217,7 @@ test_vector2(void)
                 0xb0, 0x43, 0x66, 0x99, 0xc7, 0x3e, 0xb0, 0x14,
                 0xe4, 0xf5,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -268,9 +244,9 @@ test_vector3(void)
                 0x93, 0xf6, 0x4e, 0x27, 0x78, 0xb9, 0xc2, 0x87,
                 0x82, 0xf1, 0x33, 0x2c, 0xd2, 0x3e, 0xf1, 0x5a,
                 0xe1, 0x90, 0x58, 0xc7, 0x08, 0x55, 0x44, 0xa2,
-                0x39, 0xca, 0x54, 0x11, 0xe3, 0x9a
+                0x39, 0xca, 0x54, 0x11, 0xe3, 0x9a,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -311,7 +287,7 @@ test_vector4(void)
                 0xc2, 0x93, 0xeb, 0xc0, 0xbc, 0xd2, 0x7c, 0x0b,
                 0x84, 0x02
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -341,7 +317,7 @@ test_vector5(void)
                 0x4d, 0x49, 0x7f, 0x27, 0x58, 0x6a, 0x3e, 0xc5,
                 0xa2, 0xb7, 0xd2, 0xde, 0x80, 0x51,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -379,7 +355,7 @@ test_vector6(void)
                 0x35, 0xa9, 0x2d, 0x8b, 0xfb, 0x58, 0x2a, 0xcd,
                 0xfc, 0x14, 0xbc, 0xbc, 0xa4, 0x5e, 0x07,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -424,7 +400,7 @@ test_vector7(void)
                 0x7c, 0x7b, 0x2e, 0x61, 0xbf, 0xab, 0xba, 0x7e,
                 0x25, 0x26, 0x01, 0x82, 0x6c, 0x16, 0x25, 0xcc,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -459,7 +435,7 @@ test_vector8(void)
                 0x12, 0x5e, 0xd3, 0xea, 0x5d, 0xe5, 0x89, 0xf0,
                 0x93, 0x57, 0x64, 0xb7,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);
@@ -485,7 +461,7 @@ test_vector9(void)
                 0x17, 0xc1, 0xf2, 0x5d, 0x81, 0xe1, 0xf9, 0x1c,
                 0x96, 0xbb, 0x34,
         };
-        int     expected_len = strlen(expected);
+        int     expected_len = strlen((char *)expected);
         int     box_len = sizeof box_contents;
 
         test_unbox_vector(box_contents, box_len, expected, expected_len);

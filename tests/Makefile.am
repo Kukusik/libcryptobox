@@ -1,5 +1,5 @@
-AM_CFLAGS = -I/usr/local/include -I../src -std=c99
-AM_LDFLAGS = -L/usr/local/include
+AM_CFLAGS = -I/usr/local/include -I../src -std=c99 
+AM_LDFLAGS = -L/usr/local/lib
 
 check_PROGRAMS = secretbox_test strongbox_test
 
