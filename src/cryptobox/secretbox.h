@@ -21,16 +21,12 @@
 #include <sys/types.h>
 
 
-struct secretbox_box {
-        unsigned char   *contents;
-        int              len;
-};
-
 const size_t    SECRETBOX_KEY_SIZE = 48;
 const size_t    SECRETBOX_OVERHEAD = 48;
 
 int              secretbox_generate_key(unsigned char *);
 unsigned char   *secretbox_seal(unsigned char *, int, int *, unsigned char *);
 unsigned char   *secretbox_open(unsigned char *, int, unsigned char *);
+
 
 #endif

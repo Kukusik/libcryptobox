@@ -21,11 +21,6 @@
 #include <sys/types.h>
 
 
-struct strongbox_box {
-        unsigned char   *contents;
-        int              len;
-};
-
 const size_t    STRONGBOX_KEY_SIZE = 64;
 const size_t    STRONGBOX_OVERHEAD = 48;
 
