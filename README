@@ -11,3 +11,9 @@ of Suite B ciphers might be required.
 
 License:
 libcryptobox is released under the ISC license.
+
+
+Dependenices:
+libcryptobox uses the OpenSSL EVP primitives, and requires a recent
+version of OpenSSL. For example, the version of OpenSSL shipped with OS
+X as of 10.8.3 is too old. The library was written using OpenSSL 1.0.0.
