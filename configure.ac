@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
 AC_INIT([libcryptobox],
-         [0.6.0],
+         [0.6.1],
          [kyle@tyrfingr.is],
          [],
          [http://cryptobox.tyrfingr.is/])
