@@ -38,7 +38,7 @@ static int       strongbox_check_tag(unsigned char *, unsigned char *, int);
 
 const size_t STRONGBOX_IV_SIZE  = 16;
 const size_t STRONGBOX_CRYPT_SIZE = 32;
-const size_t STRONGBOX_TAG_SIZE = 32;
+const size_t STRONGBOX_TAG_SIZE = 48;
 
 
 /*
@@ -108,7 +108,7 @@ strongbox_tag(unsigned char *key, unsigned char *in, int inlen,
         int              res = 0;
 
         memcpy(tagkey, key+STRONGBOX_CRYPT_SIZE, STRONGBOX_TAG_SIZE);
-        tag = HMAC(EVP_sha256(), tagkey, STRONGBOX_TAG_SIZE, in, inlen,
+        tag = HMAC(EVP_sha384(), tagkey, STRONGBOX_TAG_SIZE, in, inlen,
                    tag, &md_len);
         memset(tagkey, 0x0, STRONGBOX_TAG_SIZE);
         if (NULL != tag)

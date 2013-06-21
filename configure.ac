@@ -1,9 +1,9 @@
 AC_PREREQ([2.69])
 AC_INIT([libcryptobox],
-         [0.5.0],
+         [0.5.1],
          [kyle@tyrfingr.is],
          [],
-         [https://tyrfingr.is/projects/cryptobox/])
+         [http://cryptobox.tyrfingr.is/])
 AM_INIT_AUTOMAKE([1.11 foreign])
 LT_PREREQ([2.4.2])
 LT_INIT

@@ -21,8 +21,8 @@
 #include <sys/types.h>
 
 
-const size_t    STRONGBOX_KEY_SIZE = 64;
-const size_t    STRONGBOX_OVERHEAD = 48;
+const size_t    STRONGBOX_KEY_SIZE = 80;
+const size_t    STRONGBOX_OVERHEAD = 64;
 
 int              strongbox_generate_key(unsigned char *);
 unsigned char   *strongbox_seal(unsigned char *, int, int *, unsigned char *);
