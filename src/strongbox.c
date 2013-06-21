@@ -201,7 +201,9 @@ strongbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
 
 
 /*
- * Recover the message from a box.
+ * Recover the message from a box. Returns the message (which is
+ * box_len - STRONGBOX_OVERHEAD bytes) or NULL if the message could not
+ * be recovered. The caller is responsible for freeing the returned value.
  */
 unsigned char *
 strongbox_open(unsigned char *box, int box_len, unsigned char *key)
