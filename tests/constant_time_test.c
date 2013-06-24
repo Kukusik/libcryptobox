@@ -37,7 +37,6 @@ test_byte_compare(void)
 
 	for (i = 0; i < 2; i ++) {
 		for (j = 0; j < 2 ; j++) {
-			printf("%d, %d\n", i, j);
 			if (i == j) {
 				CU_ASSERT(1 == constant_time_byte_compare(i, j));
 			} else {

@@ -17,7 +17,6 @@
 
 
 #include <sys/types.h>
-#include <stdio.h>
 #include "constant_time.h"
 
 
