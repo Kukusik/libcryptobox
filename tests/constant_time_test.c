@@ -35,8 +35,8 @@ test_byte_compare(void)
 {
 	unsigned char i, j;
 
-	for (i = 0; i < 2; i ++) {
-		for (j = 0; j < 2 ; j++) {
+	for (i = 0; i != 254; i ++) {
+		for (j = 0; j != 254 ; j++) {
 			if (i == j) {
 				CU_ASSERT(1 == constant_time_byte_compare(i, j));
 			} else {
@@ -45,6 +45,7 @@ test_byte_compare(void)
 		}
 	}
 }
+
 
 static void
 test_equals(void)
@@ -57,6 +58,7 @@ test_equals(void)
 	CU_ASSERT(1 == constant_time_equals(test1, t1len, test1, t1len));
 	CU_ASSERT(1 != constant_time_equals(test1, t1len, test2, t2len));
 }
+
 
 /*
  * init_test is called each time a test is run, and cleanup is run after
