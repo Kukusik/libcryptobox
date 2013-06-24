@@ -22,6 +22,7 @@
 #include <openssl/rand.h>
 #include <stdio.h>
 
+#include "constant_time.h"
 #include <cryptobox/strongbox.h>
 
 
@@ -194,7 +195,7 @@ strongbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
         memcpy(tagkey, key+STRONGBOX_CRYPT_SIZE, STRONGBOX_TAG_SIZE);
         memcpy(tag, in+msglen, STRONGBOX_TAG_SIZE);
         if (strongbox_tag(key, in, msglen, atag))
-	if (memcmp(atag, tag, STRONGBOX_TAG_SIZE) == 0)
+	if (constant_time_equals(atag, STRONGBOX_TAG_SIZE, tag, STRONGBOX_TAG_SIZE) == 1)
 			match = 1;
         memset(tagkey, 0, STRONGBOX_TAG_SIZE);
         return match;
