@@ -6,5 +6,5 @@ AM_CFLAGS += -D_BSD_SOURCE -D_XOPEN_SOURCE=700
 
 lib_LTLIBRARIES = libcryptobox.la
 nobase_include_HEADERS = cryptobox/secretbox.h cryptobox/strongbox.h
-libcryptobox_la_SOURCES = secretbox.c strongbox.c
+libcryptobox_la_SOURCES = secretbox.c strongbox.c constant_time.c
 libcryptobox_la_LIBADD = -lcrypto

@@ -45,8 +45,8 @@ constant_time_byte_compare(unsigned char a, unsigned char b)
 int
 constant_time_equals(unsigned char *a, int alen, unsigned char *b, int blen)
 {
-	size_t	i = 0;
-	size_t	n = 0;
+	int	i = 0;
+	int	n = 0;
 	int	eq = 0;
 	int	c1, c2;
 

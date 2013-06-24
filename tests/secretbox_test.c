@@ -108,6 +108,7 @@ test_decrypt(void)
                 CU_ASSERT(0 == memcmp(expected, msg, 4));
                 free(msg);
         }
+}
 
 
 static void
