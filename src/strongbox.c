@@ -34,12 +34,11 @@ static int       strongbox_generate_nonce(unsigned char *);
 static int       strongbox_tag(unsigned char *, unsigned char *, int,
                                unsigned char *);
 static int       strongbox_check_tag(unsigned char *, unsigned char *, int);
-static int       strongbox_check_boxlen(struct strongbox_box *);
 
 
 const size_t STRONGBOX_IV_SIZE  = 16;
 const size_t STRONGBOX_CRYPT_SIZE = 32;
-const size_t STRONGBOX_TAG_SIZE = 32;
+const size_t STRONGBOX_TAG_SIZE = 48;
 
 
 /*
@@ -109,7 +108,7 @@ strongbox_tag(unsigned char *key, unsigned char *in, int inlen,
         int              res = 0;
 
         memcpy(tagkey, key+STRONGBOX_CRYPT_SIZE, STRONGBOX_TAG_SIZE);
-        tag = HMAC(EVP_sha256(), tagkey, STRONGBOX_TAG_SIZE, in, inlen,
+        tag = HMAC(EVP_sha384(), tagkey, STRONGBOX_TAG_SIZE, in, inlen,
                    tag, &md_len);
         memset(tagkey, 0x0, STRONGBOX_TAG_SIZE);
         if (NULL != tag)
@@ -121,30 +120,29 @@ strongbox_tag(unsigned char *key, unsigned char *in, int inlen,
 /*
  * Seal a message into a box.
  */
-struct strongbox_box *
-strongbox_seal(unsigned char *m, int mlen, unsigned char *key)
+unsigned char *
+strongbox_seal(unsigned char *m, int mlen, int *box_len, unsigned char *key)
 {
-        struct strongbox_box    *box = NULL;
-        unsigned char           *c;
+        unsigned char           *box;
 	int			 ctlen;
 
 	ctlen = mlen+STRONGBOX_IV_SIZE;
-        if (NULL == (c = malloc(mlen + STRONGBOX_OVERHEAD + 1)))
+        if (NULL == (box = malloc(mlen+STRONGBOX_OVERHEAD)))
                 return NULL;
 
-        if (strongbox_encrypt(key, m, c, mlen))
-        if (strongbox_tag(key, c, ctlen, c+ctlen)) {
-                if (NULL != (box = malloc(sizeof(struct strongbox_box)))) {
-                        box->contents = c;
-                        box->len = mlen+STRONGBOX_OVERHEAD;
-                }
+        if (strongbox_encrypt(key, m, box, mlen))
+        if (strongbox_tag(key, box, ctlen, box+ctlen)) {
+		if (NULL != box_len)
+			*box_len = mlen+STRONGBOX_OVERHEAD;
+		return box;
         }
 
-        if (NULL == box) {
-                memset(c, 0, mlen+STRONGBOX_OVERHEAD);
-                free(c);
+        if (NULL != box) {
+                memset(box, 0, mlen+STRONGBOX_OVERHEAD);
+                free(box);
 	}
-        return box;
+	*box_len = 0;
+        return NULL;
 }
 
 
@@ -156,8 +154,9 @@ strongbox_decrypt(unsigned char *key, unsigned char *in, unsigned char *out,
                   int data_len)
 {
         EVP_CIPHER_CTX   crypt;
-        unsigned char    nonce[STRONGBOX_IV_SIZE+1];
-        unsigned char    cryptkey[STRONGBOX_CRYPT_SIZE+1];
+
+        unsigned char    nonce[STRONGBOX_IV_SIZE];
+        unsigned char    cryptkey[STRONGBOX_CRYPT_SIZE];
         int              ptlen = 0;
         int              res = 0;
 	int		 finale = 0;
@@ -196,55 +195,33 @@ strongbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
         memcpy(tag, in+msglen, STRONGBOX_TAG_SIZE);
         if (strongbox_tag(key, in, msglen, atag))
 	if (constant_time_equals(atag, STRONGBOX_TAG_SIZE, tag, STRONGBOX_TAG_SIZE) == 1)
-			match = 1;
+		match = 1;
         memset(tagkey, 0, STRONGBOX_TAG_SIZE);
         return match;
 }
 
 
 /*
- * Recover the message from a box.
+ * Recover the message from a box. Returns the message (which is
+ * box_len - STRONGBOX_OVERHEAD bytes) or NULL if the message could not
+ * be recovered. The caller is responsible for freeing the returned value.
  */
 unsigned char *
-strongbox_open(struct strongbox_box *box, unsigned char *key)
+strongbox_open(unsigned char *box, int box_len, unsigned char *key)
 {
         unsigned char   *message = NULL;
 	int		 decryptlen = 0;
 
 	if (box == NULL)
 		return NULL;
-        if (!strongbox_check_boxlen(box))
-                return NULL;
-	decryptlen = (box->len) - STRONGBOX_OVERHEAD;
-        if (NULL != (message = malloc(decryptlen + 1)))
-        if (strongbox_decrypt(key, box->contents, message, decryptlen))
-	if (strongbox_check_tag(key, box->contents, box->len))
+
+	decryptlen = box_len - STRONGBOX_OVERHEAD;
+        if (NULL != (message = malloc(decryptlen)))
+        if (strongbox_decrypt(key, box, message, decryptlen))
+	if (strongbox_check_tag(key, box, box_len))
 		return message;
         if (NULL != message)
                 memset(message, 0, decryptlen+1);
         free(message);
         return NULL;
-}
-
-
-/*
- * Reclaim the memory used by a box.
- */
-void
-strongbox_close(struct strongbox_box *box)
-{
-        if (NULL != box)
-                free(box->contents);
-        free(box);
-}
-
-
-int
-strongbox_check_boxlen(struct strongbox_box *box)
-{
-        if (box == NULL)
-                return 0;
-        if (box->len <= STRONGBOX_OVERHEAD)
-                return 0;
-        return 1;
 }

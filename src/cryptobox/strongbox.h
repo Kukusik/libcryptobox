@@ -21,17 +21,12 @@
 #include <sys/types.h>
 
 
-struct strongbox_box {
-        unsigned char   *contents;
-        int              len;
-};
+const size_t    STRONGBOX_KEY_SIZE = 80;
+const size_t    STRONGBOX_OVERHEAD = 64;
 
-const size_t    STRONGBOX_KEY_SIZE = 64;
-const size_t    STRONGBOX_OVERHEAD = 48;
+int              strongbox_generate_key(unsigned char *);
+unsigned char   *strongbox_seal(unsigned char *, int, int *, unsigned char *);
+unsigned char   *strongbox_open(unsigned char *, int, unsigned char *);
 
-int                      strongbox_generate_key(unsigned char *);
-struct strongbox_box    *strongbox_seal(unsigned char *, int, unsigned char *);
-unsigned char           *strongbox_open(struct strongbox_box *, unsigned char *);
-void                     strongbox_close(struct strongbox_box *);
 
 #endif
