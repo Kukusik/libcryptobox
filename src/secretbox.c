@@ -36,7 +36,6 @@ static int       secretbox_tag(unsigned char *, unsigned char *, int,
 static int       secretbox_check_tag(unsigned char *, unsigned char *, int);
 
 
-
 const size_t SECRETBOX_IV_SIZE  = 16;
 const size_t SECRETBOX_CRYPT_SIZE = 16;
 const size_t SECRETBOX_TAG_SIZE = 32;

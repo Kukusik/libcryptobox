@@ -1,4 +1,4 @@
-AC_PREREQ([2.69])
+AC_PREREQ([2.60])
 AC_INIT([libcryptobox],
          [0.6.0],
          [kyle@tyrfingr.is],
