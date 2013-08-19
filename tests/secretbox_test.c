@@ -48,7 +48,6 @@ static unsigned char global_bad_key[] = {
         0x60, 0xf2, 0x26, 0x80, 0xfa, 0xb2, 0x30, 0xf8
 };
 
-
 static void
 test_identity(void)
 {

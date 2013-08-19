@@ -4,10 +4,6 @@ AM_CFLAGS += -Wnested-externs -Winline -Wno-long-long
 AM_CFLAGS += -Wstrict-prototypes -Werror -std=c99 -O2
 AM_CFLAGS += -D_BSD_SOURCE -D_XOPEN_SOURCE=700
 
-#AM_CFLAGS  = -Werror -Wall -std=c99
-#AM_CFLAGS += -g -O0
-
 lib_LTLIBRARIES = libcryptobox.la
 nobase_include_HEADERS = cryptobox/secretbox.h cryptobox/strongbox.h
-libcryptobox_la_SOURCES = secretbox.c strongbox.c
-libcryptobox_la_LIBADD = -lcrypto
+libcryptobox_la_SOURCES = secretbox.c strongbox.c constant_time.c

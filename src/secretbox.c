@@ -15,6 +15,7 @@
  * SOFTWARE.
  */
 
+
 #include <sys/types.h>
 #include <string.h>
 #include <openssl/evp.h>
@@ -22,6 +23,7 @@
 #include <openssl/rand.h>
 #include <stdio.h>
 
+#include "constant_time.h"
 #include <cryptobox/secretbox.h>
 
 
@@ -33,7 +35,6 @@ static int       secretbox_generate_nonce(unsigned char *);
 static int       secretbox_tag(unsigned char *, unsigned char *, int,
                                unsigned char *);
 static int       secretbox_check_tag(unsigned char *, unsigned char *, int);
-
 
 
 const size_t SECRETBOX_IV_SIZE  = 16;
@@ -193,8 +194,8 @@ secretbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
         memcpy(tagkey, key+SECRETBOX_CRYPT_SIZE, SECRETBOX_TAG_SIZE);
         memcpy(tag, in+msglen, SECRETBOX_TAG_SIZE);
         if (secretbox_tag(key, in, msglen, atag))
-	if (memcmp(atag, tag, SECRETBOX_TAG_SIZE) == 0)
-			match = 1;
+	if (constant_time_equals(atag, SECRETBOX_TAG_SIZE, tag, SECRETBOX_TAG_SIZE) == 1)
+		match = 1;
         memset(tagkey, 0, SECRETBOX_TAG_SIZE);
         return match;
 }

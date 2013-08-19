@@ -22,6 +22,7 @@
 #include <openssl/rand.h>
 #include <stdio.h>
 
+#include "constant_time.h"
 #include <cryptobox/strongbox.h>
 
 
@@ -33,7 +34,6 @@ static int       strongbox_generate_nonce(unsigned char *);
 static int       strongbox_tag(unsigned char *, unsigned char *, int,
                                unsigned char *);
 static int       strongbox_check_tag(unsigned char *, unsigned char *, int);
-
 
 
 const size_t STRONGBOX_IV_SIZE  = 16;
@@ -154,6 +154,7 @@ strongbox_decrypt(unsigned char *key, unsigned char *in, unsigned char *out,
                   int data_len)
 {
         EVP_CIPHER_CTX   crypt;
+
         unsigned char    nonce[STRONGBOX_IV_SIZE];
         unsigned char    cryptkey[STRONGBOX_CRYPT_SIZE];
         int              ptlen = 0;
@@ -193,8 +194,8 @@ strongbox_check_tag(unsigned char *key, unsigned char *in, int inlen)
         memcpy(tagkey, key+STRONGBOX_CRYPT_SIZE, STRONGBOX_TAG_SIZE);
         memcpy(tag, in+msglen, STRONGBOX_TAG_SIZE);
         if (strongbox_tag(key, in, msglen, atag))
-	if (memcmp(atag, tag, STRONGBOX_TAG_SIZE) == 0)
-			match = 1;
+	if (constant_time_equals(atag, STRONGBOX_TAG_SIZE, tag, STRONGBOX_TAG_SIZE) == 1)
+		match = 1;
         memset(tagkey, 0, STRONGBOX_TAG_SIZE);
         return match;
 }
@@ -213,6 +214,7 @@ strongbox_open(unsigned char *box, int box_len, unsigned char *key)
 
 	if (box == NULL)
 		return NULL;
+
 	decryptlen = box_len - STRONGBOX_OVERHEAD;
         if (NULL != (message = malloc(decryptlen)))
         if (strongbox_decrypt(key, box, message, decryptlen))
